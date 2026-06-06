@@ -1,0 +1,49 @@
+// prisma/schema.prisma
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model Round {
+  id        String   @id @default(cuid())
+  createdAt DateTime @default(now())
+
+  // Round lifecycle: CREATED → STARTED → REVEALED
+  status String @default("CREATED")
+
+  // ── Fairness fields ──────────────────────────────────────
+  // nonce: random string per round, committed upfront
+  nonce     String
+  // commitHex: SHA256(serverSeed:nonce) — shown to user before round starts
+  commitHex String
+  // serverSeed: revealed AFTER round ends
+  serverSeed String?
+  // clientSeed: provided by the player
+  clientSeed String @default("")
+  // combinedSeed: SHA256(serverSeed:clientSeed:nonce) — drives all RNG
+  combinedSeed String @default("")
+  // pegMapHash: SHA256(JSON.stringify(pegMap)) — proves pegs weren't changed
+  pegMapHash String @default("")
+
+  // ── Game fields ───────────────────────────────────────────
+  rows            Int    @default(12)
+  dropColumn      Int    @default(6)
+  binIndex        Int    @default(-1)
+  payoutMultiplier Float @default(0)
+  payoutCents      Int   @default(0)
+  betCents         Int   @default(0)
+
+  // pathJson: array of "L"/"R" decisions per row, stored as JSON string
+  // e.g. ["L","R","R","L","R","R","L","R","L","L","R","R"]
+  pathJson String @default("[]")
+  // pegMap: JSON array of numbers representing the pegs, stored as JSON string
+  pegMap   String?
+
+  startedAt  DateTime?
+  revealedAt DateTime?
+}
