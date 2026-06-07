@@ -5,7 +5,7 @@ generator client {
 }
 
 datasource db {
-  provider = "sqlite"
+  provider = "postgresql"
   url      = env("DATABASE_URL")
 }
 
@@ -35,8 +35,8 @@ model Round {
   dropColumn      Int    @default(6)
   binIndex        Int    @default(-1)
   payoutMultiplier Float @default(0)
-  payoutCents      Int   @default(0)
-  betCents         Int   @default(0)
+  payoutCents      Float @default(0)
+  betCents         Float @default(0)
 
   // pathJson: array of "L"/"R" decisions per row, stored as JSON string
   // e.g. ["L","R","R","L","R","R","L","R","L","L","R","R"]

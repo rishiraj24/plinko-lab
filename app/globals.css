@@ -273,8 +273,9 @@
   letter-spacing: 0.04em;
 }
 
-/* ── Error toast ─────────────────────────────────────────────────────────── */
+/* ── Error toast with retry ───────────────────────────────────────────────── */
 
+/* Replace the existing .error-toast rule with this extended version */
 .error-toast {
   background: #3a1a1a;
   border: 1px solid #8b2020;
@@ -286,15 +287,38 @@
   display: flex;
   align-items: center;
   gap: 12px;
+  flex-wrap: wrap;
 }
 
-.error-toast button {
+.error-toast-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-left: auto;
+}
+
+.btn-retry {
+  background: #5a1a1a;
+  border: 1px solid #8b2020;
+  border-radius: 5px;
+  color: #ff9090;
+  cursor: pointer;
+  font-family: inherit;
+  font-size: 0.75rem;
+  font-weight: 600;
+  padding: 4px 10px;
+  transition: background 0.15s;
+}
+.btn-retry:hover { background: #6b2020; }
+
+.btn-dismiss {
   background: none;
   border: none;
   color: #ff9090;
   cursor: pointer;
   font-size: 1rem;
-  margin-left: auto;
+  line-height: 1;
+  padding: 0;
 }
 
 /* ── Accessibility ───────────────────────────────────────────────────────── */
@@ -324,5 +348,258 @@
   canvas {
     width: 100% !important;
     height: auto !important;
+  }
+
+  /* Session log full-width on mobile */
+  .session-log {
+    border-radius: 8px;
+  }
+
+  /* Paytable scrolls horizontally if it overflows */
+  .paytable-wrap {
+    overflow-x: auto;
+  }
+}
+
+/* ── Session log ─────────────────────────────────────────────────────────── */
+
+.session-log {
+  width: 100%;
+  max-width: 920px;
+  margin-top: 40px;
+  background: #13111f;
+  border: 1px solid #2e2850;
+  border-radius: 12px;
+  overflow: hidden;
+}
+
+.session-log-header {
+  display: flex;
+  align-items: center;
+  padding: 0;
+  border-bottom: 1px solid #2e2850;
+}
+
+.session-log-toggle {
+  background: none;
+  border: none;
+  color: #e8e0ff;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex: 1;
+  font-family: inherit;
+  padding: 14px 20px;
+  text-align: left;
+}
+
+.session-log-title {
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #c8b8ff;
+}
+
+.session-log-count {
+  font-size: 0.7rem;
+  color: #4a4070;
+}
+
+.session-toggle-icon {
+  font-size: 0.65rem;
+  color: #4a4070;
+  margin-left: auto;
+}
+
+.session-refresh-btn {
+  background: none;
+  border: none;
+  border-left: 1px solid #2e2850;
+  color: #4a4070;
+  cursor: pointer;
+  font-size: 1rem;
+  height: 100%;
+  padding: 0 16px;
+  transition: color 0.15s;
+}
+.session-refresh-btn:hover { color: #c8b8ff; }
+
+.session-log-body {
+  padding: 0;
+}
+
+.session-empty {
+  color: #4a4070;
+  font-size: 0.8rem;
+  padding: 20px 24px;
+  text-align: center;
+}
+
+.session-error {
+  color: #ff9090;
+  font-size: 0.78rem;
+  padding: 12px 20px;
+}
+
+/* ── Session table ───────────────────────────────────────────────────────── */
+
+.session-table-wrap {
+  overflow-x: auto;
+}
+
+.session-table {
+  border-collapse: collapse;
+  font-size: 0.78rem;
+  min-width: 600px;
+  width: 100%;
+}
+
+.session-table th {
+  background: #1a1828;
+  color: #4a4070;
+  font-size: 0.65rem;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  padding: 8px 14px;
+  text-align: left;
+  text-transform: uppercase;
+}
+
+.session-table td {
+  padding: 9px 14px;
+  vertical-align: middle;
+  color: #a090d0;
+}
+
+.row-even td { background: #0d0b1a; }
+.row-odd  td { background: #110f1e; }
+
+.session-id {
+  color: #4a4070;
+  font-size: 0.72rem;
+}
+
+.session-center { text-align: center; }
+
+/* Status badges */
+.status-badge {
+  border-radius: 4px;
+  font-size: 0.68rem;
+  padding: 2px 7px;
+  white-space: nowrap;
+}
+.status-revealed { background: #0d2a1a; color: #5effa0; }
+.status-started  { background: #1a1a0d; color: #ffe070; }
+.status-created  { background: #1a1828; color: #6b5fa0; }
+
+/* Payout */
+.session-payout {
+  font-weight: 700;
+  font-size: 0.8rem;
+}
+.payout-cents {
+  color: #4a4070;
+  font-size: 0.68rem;
+  font-weight: 400;
+}
+
+/* Time */
+.session-time {
+  color: #3a3060;
+  font-size: 0.72rem;
+  white-space: nowrap;
+}
+
+/* Verify link */
+.session-verify-cell { text-align: center; }
+.session-verify-link {
+  color: #7b5ea7;
+  font-size: 0.72rem;
+  text-decoration: none;
+  transition: color 0.15s;
+  white-space: nowrap;
+}
+.session-verify-link:hover { color: #c8b8ff; }
+.session-verify-na {
+  color: #2e2850;
+  font-size: 0.72rem;
+}
+
+/* ── Game header (title + mute button row) ───────────────────────────────── */
+
+.game-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  width: 100%;
+  max-width: 920px;
+  margin-bottom: 24px;
+}
+
+/* ── Mute button ─────────────────────────────────────────────────────────── */
+
+.mute-btn {
+  background: #1a1828;
+  border: 1px solid #2e2850;
+  border-radius: 8px;
+  color: #e8e0ff;
+  cursor: pointer;
+  font-size: 1.1rem;
+  padding: 8px 12px;
+  transition: background 0.15s, border-color 0.15s;
+  line-height: 1;
+}
+
+.mute-btn:hover {
+  background: #2e2850;
+  border-color: #7b5ea7;
+}
+
+/* Pressed state — clearly shows mute is active */
+.mute-btn[aria-pressed="true"] {
+  background: #2e2850;
+  border-color: #4a3870;
+  opacity: 0.7;
+}
+
+/* ── Visible focus indicators ────────────────────────────────────────────── */
+/*
+ * The default browser outline is often invisible against dark backgrounds.
+ * This ensures every interactive element has a high-contrast focus ring.
+ * We use :focus-visible (not :focus) so mouse users don't see it on click.
+ */
+
+:focus-visible {
+  outline: 2px solid #ffd700;
+  outline-offset: 3px;
+  border-radius: 4px;
+}
+
+/* Override for canvas — it gets focus for keyboard controls */
+canvas:focus-visible {
+  outline: 2px solid #ffd700;
+  outline-offset: 4px;
+  border-radius: 12px;
+}
+
+/* Override for inputs — outline sits inside the border */
+.text-input:focus-visible {
+  outline: 2px solid #7b5ea7;
+  outline-offset: 0;
+}
+
+/* ── High-contrast pairing for reduced motion preference ─────────────────── */
+/*
+ * When prefers-reduced-motion is set, the bin result becomes the primary
+ * feedback mechanism (no animation). Make it impossible to miss.
+ */
+@media (prefers-reduced-motion: reduce) {
+  /* Instant transitions only */
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
   }
 }

@@ -169,11 +169,6 @@ export default function Controls({
                         {isLoading ? 'Dropping…' : '2. Drop Ball'}
                     </button>
                 )}
-                {canReveal && (
-                    <button className="btn btn-reveal" onClick={onReveal} disabled={isLoading}>
-                        {isLoading ? 'Revealing…' : '3. Reveal Seed'}
-                    </button>
-                )}
                 {canReset && (
                     <button className="btn btn-reset" onClick={onReset}>
                         Play Again
@@ -185,7 +180,7 @@ export default function Controls({
             <div className="phase-indicator" aria-live="polite">
                 {phase === 'idle' && 'Step 1: Get a commitment to lock in the server seed.'}
                 {phase === 'committed' && 'Step 2: Drop the ball. Your client seed mixes in.'}
-                {phase === 'animating' && 'Step 3: Reveal the server seed to verify fairness.'}
+                {phase === 'animating' && 'Ball is dropping... verifying fairness...'}
                 {phase === 'revealed' && '✓ Round complete. Server seed revealed and verifiable.'}
             </div>
         </div>

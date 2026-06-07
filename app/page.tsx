@@ -6,6 +6,10 @@ import { useState, useEffect, useCallback, useRef } from 'react'
 import dynamic from 'next/dynamic'
 import Controls, { RoundState } from '@/components/Controls'
 import type { AnimationState } from '@/components/GameCanvas'
+import { audioService } from '@/lib/audio/AudioService'
+import MuteButton from '@/components/MuteButton'
+import { retryFetch } from '@/lib/utils/retryFetch'
+import SessionLog from '@/components/SessionLog'
 
 // Canvas must be client-only (uses window/document)
 const GameCanvas = dynamic(() => import('@/components/GameCanvas'), { ssr: false })
@@ -39,6 +43,11 @@ export default function GamePage() {
   const [debugGrid, setDebugGrid] = useState(false)
   const [tiltMode, setTiltMode] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [logRefreshKey, setLogRefreshKey] = useState(0)
+
+  const prefersReducedMotion =
+    typeof window !== 'undefined' &&
+    window.matchMedia('(prefers-reduced-motion: reduce)').matches
 
   const roundRef = useRef(round)
   roundRef.current = round
@@ -61,10 +70,11 @@ export default function GamePage() {
   // ── API helpers ────────────────────────────────────────────────────────────
 
   async function handleCommit() {
+    audioService.init()
     setIsLoading(true)
     setError(null)
     try {
-      const res = await fetch('/api/rounds/commit', { method: 'POST' })
+      const res = await retryFetch('/api/rounds/commit', { method: 'POST' })
       const data = await res.json()
       if (!res.ok) throw new Error(data.error)
       setRound({ roundId: data.roundId, commitHex: data.commitHex, nonce: data.nonce, phase: 'committed' })
@@ -83,7 +93,7 @@ export default function GamePage() {
     setIsLoading(true)
     setError(null)
     try {
-      const res = await fetch(`/api/rounds/${r.roundId}/start`, {
+      const res = await retryFetch(`/api/rounds/${r.roundId}/start`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ clientSeed, betCents, dropColumn }),
@@ -104,7 +114,13 @@ export default function GamePage() {
         onComplete: (binIndex) => {
           setWinningBin(binIndex)
           fireConfetti(data.payoutMultiplier)
-          setIsLoading(false)
+          // ── Audio on landing ─────────────────────────────────────
+          if (data.payoutMultiplier >= 10) {
+            audioService.playGolden()
+          } else {
+            audioService.playLand(data.payoutMultiplier)
+          }
+          handleReveal(r.roundId)
         },
       })
     } catch (err: unknown) {
@@ -113,16 +129,15 @@ export default function GamePage() {
     }
   }, [clientSeed, betCents, dropColumn])
 
-  async function handleReveal() {
-    const r = round
-    if (!r) return
+  async function handleReveal(roundId: string) {
     setIsLoading(true)
     setError(null)
     try {
-      const res = await fetch(`/api/rounds/${r.roundId}/reveal`, { method: 'POST' })
+      const res = await retryFetch(`/api/rounds/${roundId}/reveal`, { method: 'POST' })
       const data = await res.json()
       if (!res.ok) throw new Error(data.error)
       setRound(prev => prev ? { ...prev, phase: 'revealed', serverSeed: data.serverSeed } : prev)
+      setLogRefreshKey(k => k + 1)
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : 'Reveal failed')
     } finally {
@@ -141,13 +156,31 @@ export default function GamePage() {
 
   return (
     <main className="game-page">
-      <h1 className="game-title">Plinko Lab</h1>
-      <p className="game-subtitle">Provably fair · commit-reveal · open verifier</p>
+      <div className="game-header">
+
+        <div>
+          <h1 className="game-title">Plinko Lab</h1>
+          <p className="game-subtitle">Provably fair · commit-reveal · open verifier</p>
+        </div>
+        <MuteButton />
+      </div>
 
       {error && (
         <div className="error-toast" role="alert">
-          {error}
-          <button onClick={() => setError(null)}>✕</button>
+          <span>{error}</span>
+          <div className="error-toast-actions">
+            {round?.phase === 'committed' && (
+              <button className="btn-retry" onClick={handleDrop}>
+                Retry
+              </button>
+            )}
+            {round?.phase === 'animating' && (
+              <button className="btn-retry" onClick={() => round.roundId && handleReveal(round.roundId)}>
+                Retry reveal
+              </button>
+            )}
+            <button className="btn-dismiss" onClick={() => setError(null)}>✕</button>
+          </div>
         </div>
       )}
 
@@ -157,6 +190,7 @@ export default function GamePage() {
             animation={animation}
             winningBin={winningBin}
             debugGrid={debugGrid}
+            reducedMotion={prefersReducedMotion}
           />
           {/* ARIA live region for screen reader announcements */}
           <div aria-live="assertive" className="sr-only">
@@ -181,6 +215,8 @@ export default function GamePage() {
           onReset={handleReset}
         />
       </div>
+
+      <SessionLog refreshKey={logRefreshKey} />
 
       <p className="keyboard-hint">
         Keyboard: ← → to move column · Space to drop · T for tilt · G for debug grid

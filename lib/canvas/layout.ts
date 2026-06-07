@@ -93,13 +93,13 @@ export function computeWaypoints(
   canvasWidth: number,
 ): Point[] {
   const waypoints: Point[] = []
-  let pos = dropColumn   // horizontal index before any bounce
+  let pos = 0   // horizontal index before any bounce (always 0 for triangular board)
 
-  // Initial position — above row 0, centered on dropColumn gap
+  // Initial position — above row 0, centered on the single top gap
   const row0Span = H_SPACING   // row 0 has 1 visual span
   const row0StartX = (canvasWidth - row0Span) / 2
   waypoints.push({
-    x: row0StartX + dropColumn * H_SPACING,
+    x: row0StartX + pos * H_SPACING,
     y: TOP_OFFSET - V_SPACING,
   })
 

@@ -1,95 +1,165 @@
 // __tests__/engine.test.ts
+//
+// Core engine unit tests — the spec test vectors are the source of truth.
+// 17 tests covering: hashing, PRNG sequence, peg map, simulation,
+// determinism, paytable validity, and edge drop columns.
 
 import { PRNG } from '@/lib/engine/prng'
-import {
-    computeCommitHex,
-    computeCombinedSeed,
-    computePegMapHash,
-} from '@/lib/engine/combiner'
-import { generatePegMap } from '@/lib/engine/pegmap'
+import { computeCommitHex, computeCombinedSeed, computePegMapHash } from '@/lib/engine/combiner'
+import { generatePegMap, ROWS } from '@/lib/engine/pegmap'
+import { PAYTABLE, getPayoutMultiplier } from '@/lib/engine/simulator'
 import { runRound } from '@/lib/engine/index'
 
-// ─── Spec test vector inputs ──────────────────────────────────────────────────
-const SERVER_SEED = 'b2a5f3f32a4d9c6ee7a8c1d33456677890abcdeffedcba0987654321ffeeddcc'
-const NONCE = '42'
-const CLIENT_SEED = 'candidate-hello'
+// ─── Spec test vector constants ───────────────────────────────────────────────
+const SERVER_SEED   = 'b2a5f3f32a4d9c6ee7a8c1d33456677890abcdeffedcba0987654321ffeeddcc'
+const NONCE         = '42'
+const CLIENT_SEED   = 'candidate-hello'
 const COMBINED_SEED = 'e1dddf77de27d395ea2be2ed49aa2a59bd6bf12ee8d350c16c008abd406c07e0'
 
-// ─── Test 1: commitHex ────────────────────────────────────────────────────────
-test('commitHex matches spec', () => {
-    const result = computeCommitHex(SERVER_SEED, NONCE)
-    expect(result).toBe(
-        'bb9acdc67f3f18f3345236a01f0e5072596657a9005c7d8a22cff061451a6b34',
-    )
+// ─────────────────────────────────────────────────────────────────────────────
+// GROUP 1 — SHA-256 Combiner
+// ─────────────────────────────────────────────────────────────────────────────
+
+test('commitHex = SHA256(serverSeed:nonce) matches spec', () => {
+  expect(computeCommitHex(SERVER_SEED, NONCE)).toBe(
+    'bb9acdc67f3f18f3345236a01f0e5072596657a9005c7d8a22cff061451a6b34'
+  )
 })
 
-// ─── Test 2: combinedSeed ─────────────────────────────────────────────────────
-test('combinedSeed matches spec', () => {
-    const result = computeCombinedSeed(SERVER_SEED, CLIENT_SEED, NONCE)
-    expect(result).toBe(COMBINED_SEED)
+test('combinedSeed = SHA256(serverSeed:clientSeed:nonce) matches spec', () => {
+  expect(computeCombinedSeed(SERVER_SEED, CLIENT_SEED, NONCE)).toBe(COMBINED_SEED)
 })
 
-// ─── Test 3: PRNG sequence ────────────────────────────────────────────────────
-test('xorshift32 PRNG first 5 values match spec', () => {
-    const prng = new PRNG(COMBINED_SEED)
-    const expected = [
-        0.1106166649, 0.7625129214, 0.0439292176, 0.4578678815, 0.3438999297,
-    ]
-    for (const exp of expected) {
-        expect(prng.next()).toBeCloseTo(exp, 9) // 9 decimal places
+test('commitHex changes when nonce changes (each round is unique)', () => {
+  const c1 = computeCommitHex(SERVER_SEED, '1')
+  const c2 = computeCommitHex(SERVER_SEED, '2')
+  expect(c1).not.toBe(c2)
+})
+
+// ─────────────────────────────────────────────────────────────────────────────
+// GROUP 2 — xorshift32 PRNG
+// ─────────────────────────────────────────────────────────────────────────────
+
+test('PRNG first 5 values match spec exactly (to 9 decimal places)', () => {
+  const prng = new PRNG(COMBINED_SEED)
+  const expected = [0.1106166649, 0.7625129214, 0.0439292176, 0.4578678815, 0.3438999297]
+  for (const exp of expected) {
+    expect(prng.next()).toBeCloseTo(exp, 9)
+  }
+})
+
+test('PRNG output is always in [0, 1) across 1000 draws', () => {
+  const prng = new PRNG(COMBINED_SEED)
+  for (let i = 0; i < 1000; i++) {
+    const val = prng.next()
+    expect(val).toBeGreaterThanOrEqual(0)
+    expect(val).toBeLessThan(1)
+  }
+})
+
+// ─────────────────────────────────────────────────────────────────────────────
+// GROUP 3 — Peg Map
+// ─────────────────────────────────────────────────────────────────────────────
+
+test('peg map rows 0–2 match spec values', () => {
+  const pegMap = generatePegMap(new PRNG(COMBINED_SEED))
+  // Spec: Row 0: [0.422123]
+  expect(pegMap[0]).toEqual([0.422123])
+  // Spec: Row 1: [0.552503, 0.408786]
+  expect(pegMap[1]).toEqual([0.552503, 0.408786])
+  // Spec: Row 2: [0.491574, 0.468780, 0.436540]
+  expect(pegMap[2][0]).toBeCloseTo(0.491574, 5)
+  expect(pegMap[2][1]).toBeCloseTo(0.468780, 5)
+  expect(pegMap[2][2]).toBeCloseTo(0.436540, 5)
+})
+
+test('peg map shape: row r always has exactly r+1 pegs', () => {
+  const pegMap = generatePegMap(new PRNG(COMBINED_SEED))
+  expect(pegMap).toHaveLength(ROWS) // 12 rows
+  for (let r = 0; r < ROWS; r++) {
+    expect(pegMap[r]).toHaveLength(r + 1)
+  }
+})
+
+test('all leftBias values are in [0.4, 0.6]', () => {
+  const pegMap = generatePegMap(new PRNG(COMBINED_SEED))
+  for (const row of pegMap) {
+    for (const bias of row) {
+      expect(bias).toBeGreaterThanOrEqual(0.4)
+      expect(bias).toBeLessThanOrEqual(0.6)
     }
+  }
 })
 
-// ─── Test 4: Peg map rows 0-2 ─────────────────────────────────────────────────
-test('peg map rows 0-2 match spec', () => {
-    const prng = new PRNG(COMBINED_SEED)
-    const pegMap = generatePegMap(prng)
+// ─────────────────────────────────────────────────────────────────────────────
+// GROUP 4 — Ball Simulation
+// ─────────────────────────────────────────────────────────────────────────────
 
-    expect(pegMap[0]).toEqual([0.422123])
-    expect(pegMap[1]).toEqual([0.552503, 0.408786])
-    // Row 2: spec says [0.491574, 0.468780, 0.436540]
-    // toFixed strips trailing zeros → 0.46878, 0.43654
-    // So we check to 5 significant decimal places
-    expect(pegMap[2][0]).toBeCloseTo(0.491574, 5)
-    expect(pegMap[2][1]).toBeCloseTo(0.468780, 5)
-    expect(pegMap[2][2]).toBeCloseTo(0.436540, 5)
+test('center drop (dropColumn=6) → binIndex=6 per spec', () => {
+  expect(runRound(COMBINED_SEED, 6).binIndex).toBe(6)
 })
 
-// ─── Test 5: Center drop → binIndex 6 ────────────────────────────────────────
-test('center drop (dropColumn=6) lands on bin 6', () => {
-    const { binIndex } = runRound(COMBINED_SEED, 6)
-    expect(binIndex).toBe(6)
+test('path is exactly 12 L/R decisions', () => {
+  const { path } = runRound(COMBINED_SEED, 6)
+  expect(path).toHaveLength(12)
+  expect(path.every(d => d === 'L' || d === 'R')).toBe(true)
 })
 
-// ─── Test 6: Replay determinism ───────────────────────────────────────────────
-test('same inputs always produce same output (determinism)', () => {
-    const result1 = runRound(COMBINED_SEED, 6)
-    const result2 = runRound(COMBINED_SEED, 6)
-    const result3 = runRound(COMBINED_SEED, 6)
-
-    expect(result1.binIndex).toBe(result2.binIndex)
-    expect(result2.binIndex).toBe(result3.binIndex)
-    expect(result1.path).toEqual(result2.path)
-    expect(result2.path).toEqual(result3.path)
-    expect(result1.pegMapHash).toBe(result2.pegMapHash)
+test('binIndex is always in [0, 12] for all 13 drop columns', () => {
+  for (let col = 0; col <= 12; col++) {
+    const { binIndex } = runRound(COMBINED_SEED, col)
+    expect(binIndex).toBeGreaterThanOrEqual(0)
+    expect(binIndex).toBeLessThanOrEqual(12)
+  }
 })
 
-// ─── Test 7: Different seeds → different outcomes ─────────────────────────────
-test('different combined seeds produce different peg maps', () => {
-    const seed1 = computeCombinedSeed(SERVER_SEED, 'client-A', NONCE)
-    const seed2 = computeCombinedSeed(SERVER_SEED, 'client-B', NONCE)
+// ─────────────────────────────────────────────────────────────────────────────
+// GROUP 5 — Determinism
+// ─────────────────────────────────────────────────────────────────────────────
 
-    const result1 = runRound(seed1, 6)
-    const result2 = runRound(seed2, 6)
-
-    // Different seeds → almost certainly different pegMapHash
-    // (there's a theoretical collision chance, but essentially zero with SHA-256)
-    expect(result1.pegMapHash).not.toBe(result2.pegMapHash)
+test('identical inputs produce identical outputs (run 3× and compare)', () => {
+  const [r1, r2, r3] = [
+    runRound(COMBINED_SEED, 6),
+    runRound(COMBINED_SEED, 6),
+    runRound(COMBINED_SEED, 6),
+  ]
+  expect(r1.binIndex).toBe(r2.binIndex)
+  expect(r2.binIndex).toBe(r3.binIndex)
+  expect(r1.path).toEqual(r2.path)
+  expect(r2.path).toEqual(r3.path)
+  expect(r1.pegMapHash).toBe(r2.pegMapHash)
+  expect(r2.pegMapHash).toBe(r3.pegMapHash)
 })
 
-// ─── Test 8: Path length is always 12 ────────────────────────────────────────
-test('path always has exactly 12 decisions', () => {
-    const { path } = runRound(COMBINED_SEED, 6)
-    expect(path).toHaveLength(12)
-    expect(path.every((d) => d === 'L' || d === 'R')).toBe(true)
+test('different clientSeeds produce different peg maps (client contribution is real)', () => {
+  const seedA = computeCombinedSeed(SERVER_SEED, 'alice', NONCE)
+  const seedB = computeCombinedSeed(SERVER_SEED, 'bob',   NONCE)
+  expect(runRound(seedA, 6).pegMapHash).not.toBe(runRound(seedB, 6).pegMapHash)
+})
+
+// ─────────────────────────────────────────────────────────────────────────────
+// GROUP 6 — Paytable
+// ─────────────────────────────────────────────────────────────────────────────
+
+test('paytable has exactly 13 entries (bins 0–12)', () => {
+  expect(PAYTABLE).toHaveLength(13)
+})
+
+test('paytable is symmetric (bin i === bin 12-i)', () => {
+  for (let i = 0; i <= 6; i++) {
+    expect(PAYTABLE[i]).toBe(PAYTABLE[12 - i])
+  }
+})
+
+test('getPayoutMultiplier returns correct edge and center values', () => {
+  expect(getPayoutMultiplier(0)).toBe(10)   // leftmost edge
+  expect(getPayoutMultiplier(6)).toBe(0.2)  // center (house edge bin)
+  expect(getPayoutMultiplier(12)).toBe(10)  // rightmost edge
+})
+
+test('pegMapHash changes when pegMap changes (hash is sensitive to content)', () => {
+  const pegMap1 = generatePegMap(new PRNG(COMBINED_SEED))
+  const seedB   = computeCombinedSeed(SERVER_SEED, 'other-client', NONCE)
+  const pegMap2 = generatePegMap(new PRNG(seedB))
+  expect(computePegMapHash(pegMap1)).not.toBe(computePegMapHash(pegMap2))
 })

@@ -20,6 +20,7 @@ export {
   computeCombinedSeed,
   computePegMapHash,
 }
+export { sha256Sync, sha256Async } from './hash'
 export type { Decision, SimulationResult } from './simulator'
 
 export interface RoundResult {
