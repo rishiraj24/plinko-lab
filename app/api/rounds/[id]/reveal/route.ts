@@ -5,7 +5,7 @@ import { prisma } from '@/lib/db/prisma'
 
 export async function POST(
     _req: NextRequest,
-    { params }: { params: Promise<{ id: string }> },
+    { params }: any,
 ) {
     try {
         const { id } = await params;
