@@ -3,9 +3,7 @@
 An interactive Plinko game with a cryptographic commit-reveal protocol, 
 deterministic replay, and a public verifier.
 
-**Live app:** https://plinko-lab-flame.vercel.app/  
-**Verifier page:** https://YOUR_APP.vercel.app/verify  
-**Example round:** https://YOUR_APP.vercel.app/verify?id=YOUR_ROUND_ID
+**Live app:** https://plinko-lab-flame.vercel.app/
 
 ---
 
@@ -40,7 +38,7 @@ DATABASE_URL="file:./dev.db"
 For Postgres (Neon), replace with:
 
 ```env
-DATABASE_URL="postgresql://user:pass@host/dbname?sslmode=require"
+DATABASE_URL="postgresql://neondb_owner:npg_r5LW1NOsMqIY@ep-green-hill-aoqi9d21-pooler.c-2.ap-southeast-1.aws.neon.tech/neondb?sslmode=require&channel_binding=require"
 ```
 
 ### Initialize the database
@@ -307,7 +305,5 @@ breakdown by phase:
 
 | | |
 |---|---|
-| **Live app** | https://YOUR_APP.vercel.app |
-| **Verifier page** | https://YOUR_APP.vercel.app/verify |
-| **Example round** | https://YOUR_APP.vercel.app/verify?id=YOUR_ROUND_ID |
-| **GitHub repo** | https://github.com/YOUR_USERNAME/plinko-lab |
+| **Live app** | https://plinko-lab-flame.vercel.app/ |
+| **GitHub repo** | https://github.com/rishiraj24/plinko-lab |
