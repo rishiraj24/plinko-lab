@@ -3,7 +3,7 @@
 An interactive Plinko game with a cryptographic commit-reveal protocol, 
 deterministic replay, and a public verifier.
 
-**Live app:** https://YOUR_APP.vercel.app  
+**Live app:** https://plinko-lab-flame.vercel.app/  
 **Verifier page:** https://YOUR_APP.vercel.app/verify  
 **Example round:** https://YOUR_APP.vercel.app/verify?id=YOUR_ROUND_ID
 
