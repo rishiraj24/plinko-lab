@@ -18,7 +18,7 @@ deterministic replay, and a public verifier.
 ### Setup
 
 ```bash
-git clone https://github.com/YOUR_USERNAME/plinko-lab.git
+git clone https://github.com/rishiraj24/plinko-lab
 cd plinko-lab
 npm install
 ```

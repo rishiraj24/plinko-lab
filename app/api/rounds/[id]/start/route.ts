@@ -12,7 +12,7 @@ interface StartBody {
 
 export async function POST(
   req: NextRequest,
-  { params }: any,
+  { params }: { params: Promise<{ id: string }> },
 ) {
   try {
     const body: StartBody = await req.json()
