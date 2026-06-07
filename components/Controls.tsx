@@ -32,7 +32,6 @@ interface Props {
     onClientSeedChange: (seed: string) => void
     onCommit: () => void
     onDrop: () => void
-    onReveal: () => void
     onReset: () => void
 }
 
@@ -55,7 +54,6 @@ export default function Controls({
     onClientSeedChange,
     onCommit,
     onDrop,
-    onReveal,
     onReset,
 }: Props) {
     const phase = round?.phase ?? 'idle'

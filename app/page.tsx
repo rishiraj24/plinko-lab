@@ -211,7 +211,6 @@ export default function GamePage() {
           onClientSeedChange={setClientSeed}
           onCommit={handleCommit}
           onDrop={handleDrop}
-          onReveal={handleReveal}
           onReset={handleReset}
         />
       </div>
